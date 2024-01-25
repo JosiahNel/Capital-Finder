@@ -6,6 +6,9 @@
 const form = document.querySelector('.form');
 const sidebar = document.querySelector('.sidebar');
 const inputCountry = document.querySelector('.form__input--country');
+const errorEl = document.querySelector('.error');
+const errorBtn = document.querySelector('.error-btn');
+const errorMsg = document.querySelector('.error-message');
 
 class App {
   map;
@@ -18,6 +21,17 @@ class App {
 
     // Attach event handlers
     form.addEventListener('submit', this._formSubmit.bind(this));
+    errorBtn.addEventListener(
+      'click',
+      this._displayError.bind('_', '_', false)
+    );
+    // errorBtn.addEventListener('click', function () {
+    //   app._displayError('', false);
+    // });
+  }
+  _displayError(err, show) {
+    errorMsg.textContent = `${err}`;
+    errorEl.style.display = `${show ? 'flex' : 'none'}`;
   }
 
   _getposition() {
@@ -25,7 +39,7 @@ class App {
       navigator.geolocation.getCurrentPosition(
         this._loadMap.bind(this),
         function () {
-          alert(`Couldn't get your position`);
+          this._displayError(new Error(`Couldn't get position`), true);
         }
       );
   }
@@ -44,7 +58,7 @@ class App {
     }).addTo(this.map);
 
     // Handling clicks on map
-    // this.#map.on('click', this._showForm.bind(this));
+    this.map.on('mousedown', this._displayError.bind('_', '_', false));
   }
 
   _formSubmit(e) {
@@ -52,6 +66,7 @@ class App {
     this.country = inputCountry.value;
 
     this._getCountryData();
+    this._displayError('_', false);
   }
 
   _renderSideBar(data) {
@@ -87,7 +102,10 @@ class App {
     // request.send();
 
     fetch(`https://restcountries.com/v3.1/name/${this.country}`)
-      .then(resopnse => resopnse.json())
+      .then(response => {
+        if (!response.ok) throw new Error(`Country not found`);
+        return response.json();
+      })
       .then(
         function ([data]) {
           let coords = Object.entries(data.capitalInfo)[0][1];
@@ -104,7 +122,8 @@ class App {
           this._renderWorkoutMarker(coords);
           this._renderSideBar(data);
         }.bind(this)
-      );
+      )
+      .catch(err => this._displayError(`${err} "${this.country}"`, true));
   }
   _renderWorkoutMarker(coords) {
     L.marker(coords)
